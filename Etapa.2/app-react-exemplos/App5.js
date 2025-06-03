@@ -3,13 +3,14 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, Button, Image, TextInput, FlatList, Alert } from 'react-native'; // novo: Alert
 
 // Indicar o endereço do backend.
-const BASE_URL = 'http://10.81.205.4:3000'; // id sua máquina 
+const BASE_URL = 'http://10.81.205.4:3000'; // novo
 
 export default function App() {
   // Excluir tudo que tem relação com counter, pois não usar.
   /// CRUD em memória
   const [items, setItems] = useState([]);
   const [text, setText] = useState('');
+  const [quantidade, setQuantidade] = useState(1); // QUANTIDADE
   const [editItemId, setEditItemId] = useState(null);
   const [editItemText, setEditItemText] = useState('');
   // loading ... efeito de carregando...
@@ -50,11 +51,12 @@ export default function App() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({text: text.trim()}),
+        body: JSON.stringify({ text: text.trim(), quantidade }), // Adicionando quantidade
       });
       if (response.ok) {
         await fetchItems();
         setText('');
+        setQuantidade(1); // Resetar quantidade após adicionar
       }
       else {
         console.error('Failed to add item:', response.status);
@@ -74,22 +76,20 @@ export default function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({text: editItemText}),
+        body: JSON.stringify({ text: editItemText, quantidade }), // Adicionando quantidade
       });
       if (response.ok) {
         await fetchItems();
         setEditItemId(null);
         setEditItemText('');
-      }
-      else {
+        setQuantidade(1); // Resetar quantidade após atualizar
+      } else {
         console.error('Failed to update item:', response.status);
       }
+    } catch (error) {
+      console.error('Error updating item:', error);
     }
-    catch (error) {
-      console.error('Error updating item:', error)
-    }
-
-  }
+  };
 
   // DELETE
   const deleteItem = async (id) => {
@@ -123,29 +123,34 @@ export default function App() {
   };
 
   // READ -> um único item e/ou lista de itens
-  const renderItem = ({item}) => {
-    if (item.id != editItemId) {
+  const renderItem = ({ item }) => {
+    if (item.id !== editItemId) {
       return (
         <View style={styles.item}>
-          <Text style={styles.itemText}>{item.text}</Text>
+          <Text style={styles.itemText}>{item.text} (Quantidade: {item.quantidade})</Text>
           <View style={styles.buttons}>
-            <Button title='Edit' onPress={() => {setEditItemId(item.id)}}></Button>
-            <Button title='Delete' onPress={() => {deleteItem(item.id)}}></Button>
+            <Button title="Edit" onPress={() => { setEditItemId(item.id); setQuantidade(item.quantidade); }} />
+            <Button title="Delete" onPress={() => { deleteItem(item.id); }} />
           </View>
         </View>
       );
-
     } else {
-      // Um item esta sendo editado
       return (
         <View style={styles.item}>
-          <TextInput 
+          <TextInput
             style={styles.editInput}
             onChangeText={setEditItemText}
             value={editItemText}
             autoFocus
           />
-          <Button title='Update' onPress={() => updateItem(item.id)}></Button>
+          <TextInput
+            style={styles.editInput}
+            onChangeText={(value) => setQuantidade(Number(value))}
+            value={quantidade.toString()}
+            placeholder="Quantidade"
+            keyboardType="numeric"
+          />
+          <Button title="Update" onPress={() => updateItem(item.id)} />
         </View>
       );
     }
