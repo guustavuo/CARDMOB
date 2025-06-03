@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, Button, Image, TextInput, FlatList, Alert } from 'react-native'; // novo: Alert
 
 // Indicar o endereço do backend.
-const BASE_URL = 'http://10.81.205.4:3000'; // id sua máquina 
+const BASE_URL = 'http://10.81.205.4:3000/compras'; // id sua máquina 
 
 export default function App() {
   // Excluir tudo que tem relação com counter, pois não usar.

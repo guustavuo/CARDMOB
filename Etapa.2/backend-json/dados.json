@@ -1,15 +1,10 @@
 {
-  "items": [
+  "items": [],
+  "compras": [
     {
-      "text": "Feijão",
-      "quantidade": 2,
-      "id": "4312"
-    },
-    {
-      "id": "da1c",
-      "text": "Arroz",
+      "id": "d1ec",
+      "text": "Macarrão",
       "quantidade": 3
     }
-  ],
-  "compras": []
+  ]
 }
