@@ -1,187 +1,162 @@
-import React, { useState, useEffect } from 'react'; // novo: useEffect
+import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, Button, Image, TextInput, FlatList, Alert } from 'react-native'; // novo: Alert
+import { StyleSheet, Text, View, Button, TextInput, FlatList, Alert } from 'react-native';
 
-// Indicar o endereço do backend.
-const BASE_URL = 'http://10.81.205.4:3000/compras'; // id sua máquina 
+const BASE_URL = 'http://10.81.205.4:3000/api/catalog';
 
 export default function App() {
-  // Excluir tudo que tem relação com counter, pois não usar.
-  /// CRUD em memória
-  const [items, setItems] = useState([]);
-  const [text, setText] = useState('');
-  const [editItemId, setEditItemId] = useState(null);
-  const [editItemText, setEditItemText] = useState('');
-  // loading ... efeito de carregando...
-  const [loading, setLoading] = useState(false); // novo
+  const [products, setProducts] = useState([]);
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState('');
+  const [editId, setEditId] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editPrice, setEditPrice] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // Buscar tudo.
-  const fetchItems = async () => {
+  const fetchProducts = async () => {
     setLoading(true);
     try {
-      // executa o que precisa, se der erro entra no catch.
-      const response = await fetch(`${BASE_URL}/items`);
+      const response = await fetch(`${BASE_URL}`);
       const data = await response.json();
-      console.log(JSON.stringify(data)); // debug
-      setItems(data);
-
+      setProducts(data.catalog || []);
     } catch (error) {
-      // quando ocorre algum erro.
-      console.error('Error fetching items:', error);
-    }
-    finally {
+      console.error('Erro ao buscar produtos:', error);
+    } finally {
       setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchItems();
-  }, [])
+    fetchProducts();
+  }, []);
 
+  const addProduct = async () => {
+    if (!name.trim() || !price) return;
 
-  // CREATE
-  const addItem = async () => {
-    if (text.trim() === '') {
-      return;
-    }
     try {
-      const response = await fetch(`${BASE_URL}/items`, {
+      const response = await fetch(`${BASE_URL}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({text: text.trim()}),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, price: parseFloat(price), enabled: true }),
       });
       if (response.ok) {
-        await fetchItems();
-        setText('');
+        setName('');
+        setPrice('');
+        fetchProducts();
+      } else {
+        console.error('Erro ao adicionar produto');
       }
-      else {
-        console.error('Failed to add item:', response.status);
-      }
-    } 
-    catch (error) {
-      console.error('Error adding item:', error);
+    } catch (error) {
+      console.error('Erro ao adicionar:', error);
     }
+  };
 
-  }
-
-  // UPDATE
-  const updateItem = async (id) => {
+  const updateProduct = async (id) => {
     try {
-      const response = await fetch(`${BASE_URL}/items/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({text: editItemText}),
+      const response = await fetch(`${BASE_URL}/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editName, price: parseFloat(editPrice) }),
       });
       if (response.ok) {
-        await fetchItems();
-        setEditItemId(null);
-        setEditItemText('');
+        setEditId(null);
+        setEditName('');
+        setEditPrice('');
+        fetchProducts();
+      } else {
+        console.error('Erro ao atualizar produto');
       }
-      else {
-        console.error('Failed to update item:', response.status);
-      }
+    } catch (error) {
+      console.error('Erro ao atualizar:', error);
     }
-    catch (error) {
-      console.error('Error updating item:', error)
-    }
+  };
 
-  }
-
-  // DELETE
-  const deleteItem = async (id) => {
+  const deleteProduct = async (id) => {
     Alert.alert(
-      'Confirm Delete',
-      'Are you sure you want to delete this item ?',
+      'Confirmar Exclusão',
+      'Deseja realmente excluir este produto?',
       [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete',
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
           onPress: async () => {
             try {
-              const response = await fetch(`${BASE_URL}/items/${id}`, {
-                method: 'DELETE'
-              });
-              if (response.ok) {
-                await fetchItems();
-              }
-              else {
-                console.error('Failed to delete item:', response.status);
-              }
+              const response = await fetch(`${BASE_URL}/${id}`, { method: 'DELETE' });
+              if (response.ok) fetchProducts();
+              else console.error('Erro ao excluir');
+            } catch (error) {
+              console.error('Erro ao excluir:', error);
             }
-            catch (error) {
-              console.error('Error deleting item:', error);
-            }
-          }, 
+          }
         }
-      ],
-      { cancelable: true }
+      ]
     );
   };
 
-  // READ -> um único item e/ou lista de itens
-  const renderItem = ({item}) => {
-    if (item.id != editItemId) {
+  const renderItem = ({ item }) => {
+    if (item.id !== editId) {
       return (
         <View style={styles.item}>
-          <Text style={styles.itemText}>{item.text}</Text>
+          <Text style={styles.itemText}>{item.name} - R${item.price?.toFixed(2)}</Text>
           <View style={styles.buttons}>
-            <Button title='Edit' onPress={() => {setEditItemId(item.id)}}></Button>
-            <Button title='Delete' onPress={() => {deleteItem(item.id)}}></Button>
+            <Button title='Editar' onPress={() => {
+              setEditId(item.id);
+              setEditName(item.name);
+              setEditPrice(item.price.toString());
+            }} />
+            <Button title='Excluir' onPress={() => deleteProduct(item.id)} />
           </View>
         </View>
       );
-
     } else {
-      // Um item esta sendo editado
       return (
         <View style={styles.item}>
-          <TextInput 
+          <TextInput
             style={styles.editInput}
-            onChangeText={setEditItemText}
-            value={editItemText}
-            autoFocus
+            value={editName}
+            onChangeText={setEditName}
+            placeholder="Nome"
           />
-          <Button title='Update' onPress={() => updateItem(item.id)}></Button>
+          <TextInput
+            style={styles.editInput}
+            value={editPrice}
+            onChangeText={setEditPrice}
+            placeholder="Preço"
+            keyboardType='numeric'
+          />
+          <Button title='Salvar' onPress={() => updateProduct(item.id)} />
         </View>
       );
     }
-  }
+  };
 
   return (
     <View style={styles.container}>
-      <TextInput 
+      <Text style={styles.title}>Cadastro de Produtos</Text>
+
+      <TextInput
         style={styles.input}
-        value={text}
-        onChangeText={setText}
-        placeholder='Enter text item'
+        value={name}
+        onChangeText={setName}
+        placeholder='Nome do produto'
       />
-      <Button 
-        title='Add Item'
-        onPress={addItem}
+      <TextInput
+        style={styles.input}
+        value={price}
+        onChangeText={setPrice}
+        placeholder='Preço'
+        keyboardType='numeric'
       />
+      <Button title='Adicionar Produto' onPress={addProduct} />
+
       <FlatList
-        data={items}
+        data={products}
+        keyExtractor={item => item.id.toString()}
         renderItem={renderItem}
-        keyExtractor={item => item.id}
         style={styles.list}
-      />
-      <Text style={styles.text}>Olá App React Native - Atualiza!</Text>
-      <Image 
-        source={{uri: "https://picsum.photos/200"}}
-        style={{width: 200, height: 200}}
       />
 
       <StatusBar style="auto" />
-      {/* <Text style={styles.text}>Counter: {counter}</Text>
-
-      <View style={styles.buttonContainer}>
-        <Button title='Increment' onPress={incrementCounter} />
-        <Button title='Decrement' onPress={decrementCounter} />
-      </View> */}
     </View>
   );
 }
@@ -192,11 +167,10 @@ const styles = StyleSheet.create({
     padding: 20,
     marginTop: 60,
   },
-  text: {
+  title: {
     fontSize: 24,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
+    marginBottom: 10,
+    fontWeight: 'bold',
   },
   input: {
     height: 40,
@@ -209,26 +183,23 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
     padding: 10,
-    backgroundColor: '#f0f0f0',
+    marginBottom: 10,
+    backgroundColor: '#f2f2f2',
     borderRadius: 5,
   },
   itemText: {
-    flex: 1,
-    marginRight: 10,
+    fontSize: 16,
+    marginBottom: 5,
   },
   buttons: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   editInput: {
-    flex: 1,
-    marginRight: 10,
     borderColor: 'gray',
     borderWidth: 1,
     paddingHorizontal: 10,
-  }
+    marginBottom: 5,
+  },
 });
