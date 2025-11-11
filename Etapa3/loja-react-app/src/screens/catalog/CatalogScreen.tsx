@@ -4,7 +4,7 @@ import { View, Text, FlatList, StyleSheet} from 'react-native';
 import CatalogCard from "./CatalogCard";
 
 // Todo: importar o serviço de recuperação do catalog
-import { getCatalog } from '../../services/catalogServices'; // novo
+import { getCatalog } from '../../services/catalogService'; // novo
 
 import { useShop } from "../../contexts/ShopContext";
 
