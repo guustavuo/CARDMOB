@@ -1,72 +1,57 @@
-import Constants from 'expo-constants'; // novo
+import React, { createContext, useState, useEffect, useContext} from "react";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// const API_URL = Config.API_URL;
-// const API_URL = 'http://10.81.205.50:5000';
-const { apiUrl } = Constants.expoConfig?.extra || {}; // novo
+import { getTokenData } from "../services/authService"; // novo.
 
-export async function fakeLogin(email: string, password: string): Promise<string> {
-    if (email === 'teste@example.com' && password === '123') {
-        return Promise.resolve('fake-jwt-token');
-    }
-    return Promise.reject('Credenciais inválidas');
-}
+type AuthContextType = {
+    user: { token: string } | null;
+    login: (token: string) => Promise<void>;
+    logout: () => Promise<void>;
+    loading: boolean;
+    userData: any[]; // correção
+};
+const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
-export async function requestLogin(email: string, password: string): Promise<string> {
-    console.log(apiUrl); // alterado
-    try {
-        // alterado 
-        const response = await fetch(`${apiUrl}/api/users/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({email, password}),
-        });
-        const data = await response.json();
-        const jwt = data.accessToken;
-        console.log(jwt);
-        return Promise.resolve(jwt);
-    }
-    catch (error) {
-        console.error(error);
-        return Promise.reject(error);
-        // return Promise.reject('Credenciais inválidas');
-    }
-}
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    // Lógica do context provider.
+    const [user, setUser] = useState<{ token: string } | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [userData, setUserData] = useState<any[]>([]); // novo
 
-// dupliquei o requestLogin, renomeie e inclui o name nos argumentos.
-export async function requestRegister(name: string, email: string, password: string): Promise<string> {
-    try {
-        const response = await fetch(`${apiUrl}/api/users`, { // modifiquei o endpoint
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({name, email, password}), // inclui o name
-        });
-        const data = await response.json();
-        const jwt = data.accessToken;
-        console.log(jwt);
-        return Promise.resolve(jwt);
-    }
-    catch (error) {
-        console.error(error);
-        return Promise.reject(error);
-        // return Promise.reject('Credenciais inválidas');
-    }
-}
+    useEffect( () => {
+        const loadUser = async () => {
+            const token = await AsyncStorage.getItem('token');
+            if (token) {
+                setUser({ token });
+                const tokenData = await getTokenData(token); // novo
+                setUserData(tokenData); // novo
+            }
+            setLoading(false);
+        };
+        loadUser();
+    }, []);
 
-export async function getTokenData(token: string | null): Promise<any[]> {
-    try {
-        if (!token) {
-            return [];
-        }
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const payload = JSON.parse(atob(base64));
-        return payload;
-    } catch (error) {
-        console.error(error);
-        return Promise.reject('Token inválido.');
+    const login = async (token: string) => {
+        await AsyncStorage.setItem('token', token);
+        setUser({token});
+        const tokenData = await getTokenData(token); // novo
+        setUserData(tokenData); // novo
     }
-}
+
+    const logout = async () => {
+        await AsyncStorage.removeItem('token');
+        setUser(null);
+        setUserData([]);
+    }
+
+    return (
+        // correção
+        <AuthContext.Provider
+            value={{ user, login, logout, loading, userData }}
+        > 
+            {children}
+        </AuthContext.Provider>
+    );
+};
+
+export const useAuth = () => useContext(AuthContext);
